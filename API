@@ -1,0 +1,94 @@
+import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.Scanner;
+import org.json.simple.JSONArray;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
+
+public class weatherdetails {
+    //private static final String API_KEY = "b6907d289e10d714a6e88b30761fae22";
+    private static final String BASE_URL = "https://samples.openweathermap.org/data/2.5/forecast/hourly?q=London,us&appid=b6907d289e10d714a6e88b30761fae22";
+
+    public static void main(String[] args) {
+        try (Scanner scanner = new Scanner(System.in)) {
+            while (true) {
+                System.out.println("Choose an option:");
+                System.out.println("1. Get Temperature");
+                System.out.println("2. Get Wind Speed");
+                System.out.println("3. Get Pressure");
+                System.out.println("0. Exit");
+
+                int choice = scanner.nextInt();
+
+                switch (choice) {
+                    case 1:
+                        getWeatherData("temperature");
+                        break;
+                    case 2:
+                        getWeatherData("wind_speed");
+                        break;
+                    case 3:
+                        getWeatherData("pressure");
+                        break;
+                    case 0:
+                        System.out.println("Exiting program.");
+                        return;
+                    default:
+                        System.out.println("Invalid choice. Please select a valid option.");
+                }
+            }
+        } catch (IOException | ParseException e) {
+            System.out.println("An error occurred: " + e.getMessage());
+        }
+    }
+
+    private static void getWeatherData(String dataKey) throws IOException, ParseException {
+        Scanner scanner = new Scanner(System.in);
+        System.out.print("Enter date and time (yyyy-MM-dd HH:mm:ss): ");
+        String dateTime = scanner.nextLine();
+
+        if (dateTime.isEmpty()) {
+            dateTime = "now"; // Default to current time if no input provided
+        }
+
+        String apiUrl = BASE_URL + "&dt=" + dateTime;
+
+        URL url = new URL(apiUrl);
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        connection.setRequestMethod("GET");
+
+        int responseCode = connection.getResponseCode();
+        if (responseCode == 200) {
+            Scanner responseScanner = new Scanner(connection.getInputStream());
+            StringBuilder response = new StringBuilder();
+
+            while (responseScanner.hasNextLine()) {
+                response.append(responseScanner.nextLine());
+            }
+
+            JSONObject jsonResponse = (JSONObject) new JSONParser().parse(response.toString());
+            
+            if (jsonResponse.containsKey("list")) {
+                JSONArray list = (JSONArray) jsonResponse.get("list");
+                if (list.size() > 0) {
+                    JSONObject weatherData = (JSONObject) list.get(0);
+                    JSONObject main = (JSONObject) weatherData.get("main");
+                    double dataValue = (double) main.get(dataKey);
+
+                    System.out.println(dataKey.substring(0, 1).toUpperCase() + dataKey.substring(1) + ": " + dataValue);
+                } else {
+                    System.out.println("Weather data not available for the specified date and time.");
+                }
+            } else {
+                System.out.println("Weather data not available in the response.");
+            }
+
+            responseScanner.close();
+            connection.disconnect();
+        } else {
+            System.out.println("Failed to retrieve weather data. HTTP Error: " + responseCode);
+        }
+    }
+}
